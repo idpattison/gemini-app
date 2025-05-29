@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
 
 const roboto = Roboto({
   weight: ['100', '300', '400', '500', '700', '900'],
@@ -24,6 +25,19 @@ export default function RootLayout({
       <body
         className={`${roboto.variable} font-sans antialiased`}
       >
+        {/* Simple Navbar */}
+        <nav className="navbar bg-base-300 text-base-content p-4">
+          <div className="flex-1">
+            <Link href="/" className="btn btn-ghost text-xl">My App</Link>
+          </div>
+          <div className="flex-none">
+            <ul className="menu menu-horizontal px-1">
+              <li><Link href="/">Home</Link></li>
+              <li><Link href="/contact">Contact</Link></li> {/* New link to contact page */}
+            </ul>
+          </div>
+        </nav>
+
         {children}
       </body>
     </html>
