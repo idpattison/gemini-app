@@ -1,17 +1,42 @@
-describe('Home Page', () => {
-  it('should display "Hello World!"', () => {
-    // Visit the root URL of your application
-    // Make sure your Next.js development server is running on http://localhost:3000
+describe('To-Do List App', () => {
+  beforeEach(() => {
     cy.visit('http://localhost:3000');
+  });
 
-    // Assert that the h1 element contains the text "Hello World!"
-    // Using should('contains', 'X') is robust as it looks for the text anywhere within the element
-    cy.get('h1').should('contain', 'Hello World!');
+  it('should display the To-Do List title', () => {
+    cy.get('h1').should('contain', 'My To-Do List');
+  });
 
-    // You could also be more specific, if you remember the exact text and element
-    cy.contains('h1', 'Hello World!').should('be.visible');
+  it('should allow adding a new todo', () => {
+    const todoText = 'Learn Cypress testing';
+    cy.get('input[placeholder="Add a new todo"]').type(todoText);
+    cy.get('button[type="submit"]').click();
+    cy.get('ul').should('contain', todoText);
+  });
 
-    // Or check for the button we added with DaisyUI
-    cy.get('.btn-primary').should('contain', 'Click Me!');
+  it('should allow marking a todo as completed', () => {
+    const todoText = 'Buy groceries';
+    cy.get('input[placeholder="Add a new todo"]').type(todoText);
+    cy.get('button[type="submit"]').click();
+
+    cy.contains('li', todoText)
+      .find('input[type="checkbox"]')
+      .click();
+
+    cy.contains('li', todoText)
+      .find('span')
+      .should('have.class', 'line-through');
+  });
+
+  it('should allow deleting a todo', () => {
+    const todoText = 'Call mom';
+    cy.get('input[placeholder="Add a new todo"]').type(todoText);
+    cy.get('button[type="submit"]').click();
+
+    cy.contains('li', todoText)
+      .find('button.btn-error') // Select the delete button
+      .click();
+
+    cy.get('ul').should('not.contain', todoText);
   });
 });
