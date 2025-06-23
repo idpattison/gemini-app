@@ -7,14 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-     "cypress:open": "cypress open",
+    "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "test:e2e": "pnpm dev & pnpm cypress:run"
   },
   "dependencies": {
+    "@prisma/client": "^6.10.1",
     "next": "15.3.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -26,6 +28,7 @@
     "daisyui": "^5.0.40",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "prisma": "^6.10.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

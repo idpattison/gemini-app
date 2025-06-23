@@ -1,12 +1,14 @@
 'use client'; // This directive makes the component a Client Component
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // Define the interface for a Todo item
 interface Todo {
   id: string;
   name: string;
   completed: boolean;
+  createdAt: string; // From Prisma model
+  updatedAt: string; // From Prisma model
   isEditing: boolean; // New property to manage editing state
 }
 
@@ -16,43 +18,119 @@ export default function Home() {
   // State to hold the value of the new todo input field
   const [newTodoName, setNewTodoName] = useState<string>('');
   // State to hold the value of the currently edited todo
-  const [editingValue, setEditingValue] = useState<string>('');
+  // const [editingValue, setEditingValue] = useState<string>('');
+  // add loading and error states
+  const [loading, setLoading] = useState<boolean>(true); // Add loading state
+  const [error, setError] = useState<string | null>(null); // Add error state
+
+  // Function to fetch todos from the API
+  const fetchTodos = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/todos');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data: Todo[] = await response.json();
+      // Ensure isEditing is false for all fetched todos initially
+      setTodos(data.map(todo => ({ ...todo, isEditing: false })));
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch todos');
+      console.error('Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Empty dependency array means this function is created once
+
+  // Fetch todos when the component mounts
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]
+  ); // Re-run if fetchTodos changes (it won't because of useCallback)
+
+
 
   // Function to add a new todo
-  const addTodo = (e: React.FormEvent) => {
+  const addTodo = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent default form submission behavior (page reload)
     if (newTodoName.trim() === '') return; // Don't add empty todos
 
-    const newTodo: Todo = {
-      id: crypto.randomUUID(), // Generate a unique ID for the todo
-      name: newTodoName.trim(),
-      completed: false,
-      isEditing: false,
-    };
-    setTodos((prevTodos) => [...prevTodos, newTodo]); // Add new todo to the list
-    setNewTodoName(''); // Clear the input field
-  };
+      try {
+      const response = await fetch('/api/todos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newTodoName.trim() }),
+      });
 
-  // Function to toggle the completed status of a todo
-  const toggleComplete = (id: string) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-  // Function to delete a todo
-  const deleteTodo = (id: string) => {
-    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
-  };
-
-  // Function to toggle editing mode for a todo
-  const toggleEdit = (id: string) => {
-    const todo = todos.find((t) => t.id === id);
-    if (todo && !todo.isEditing) {
-      setEditingValue(todo.name); // Set editing value when entering edit mode
+      // Re-fetch all todos to update the UI
+      await fetchTodos();
+      setNewTodoName('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to add todo');
+      console.error('Add todo error:', err);
     }
+
+  };
+
+  const toggleComplete = async (id: string, currentCompleted: boolean) => {
+    try {
+      const response = await fetch(`/api/todos/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: !currentCompleted }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Optimistic update: Update state immediately, then re-fetch for confirmation
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        )
+      );
+      // await fetchTodos(); // Optional: Re-fetch for strict consistency
+    } catch (err: any) {
+      setError(err.message || 'Failed to toggle todo status');
+      console.error('Toggle complete error:', err);
+      await fetchTodos(); // Revert state on error
+    }
+  };
+
+
+// Function to delete a todo
+  const deleteTodo = async (id: string) => {
+    try {
+      const response = await fetch(`/api/todos/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Optimistic update: Remove from state immediately
+      setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+      // await fetchTodos(); // Optional: Re-fetch for strict consistency
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete todo');
+      console.error('Delete todo error:', err);
+      await fetchTodos(); // Revert state on error
+    }
+  };
+
+  // Function to toggle editing mode for a todo (client-side only)
+  const toggleEdit = (id: string) => {
     setTodos((prevTodos) =>
       prevTodos.map((todo) =>
         todo.id === id ? { ...todo, isEditing: !todo.isEditing } : todo
@@ -60,15 +138,46 @@ export default function Home() {
     );
   };
 
-  // Function to handle saving the edited todo name
-  const saveEdit = (id: string) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, name: editingValue.trim(), isEditing: false } : todo
-      )
-    );
-    setEditingValue('');
+
+// Function to handle saving the edited todo name
+  const saveEdit = async (id: string, newName: string) => {
+    if (newName.trim() === '') {
+      // If name is empty, revert or prevent save
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.id === id ? { ...todo, isEditing: false } : todo
+        )
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/todos/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Optimistic update: Update state immediately
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.id === id ? { ...todo, name: newName.trim(), isEditing: false } : todo
+        )
+      );
+      // await fetchTodos(); // Optional: Re-fetch for strict consistency
+    } catch (err: any) {
+      setError(err.message || 'Failed to update todo name');
+      console.error('Save edit error:', err);
+      await fetchTodos(); // Revert state on error
+    }
   };
+
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-base-200 text-base-content">
@@ -91,6 +200,11 @@ export default function Home() {
           </button>
         </form>
 
+         {/* Loading and Error States */}
+        {loading && <p className="text-center">Loading todos...</p>}
+        {error && <p className="text-center text-error">Error: {error}</p>}
+
+
         {/* Todo List */}
         {todos.length === 0 ? (
           <p className="text-center text-lg text-base-content/70">No todos yet! Add one above.</p>
@@ -106,7 +220,7 @@ export default function Home() {
                   type="checkbox"
                   className="checkbox checkbox-primary"
                   checked={todo.completed}
-                  onChange={() => toggleComplete(todo.id)}
+                  onChange={() => toggleComplete(todo.id, todo.completed)}
                 />
 
                 {/* Todo Name (editable or display) */}
@@ -114,14 +228,22 @@ export default function Home() {
                   <input
                     type="text"
                     className="input input-bordered flex-grow"
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onBlur={() => saveEdit(todo.id)}
-                    onKeyDown={(e) => {
+                      value={todo.name}
+                    onChange={(e) => {
+                      // Update local state for input immediately
+                      setTodos((prevTodos) =>
+                        prevTodos.map((t) =>
+                          t.id === todo.id ? { ...t, name: e.target.value } : t
+                        )
+                      );
+                    }}
+                    onBlur={(e) => saveEdit(todo.id, e.target.value)} // Save on blur
+                    onKeyDown={(e) => { // Save on Enter key press
                       if (e.key === 'Enter') {
-                        saveEdit(todo.id);
+                        saveEdit(todo.id, e.currentTarget.value);
                       }
                     }}
+
                     autoFocus
                   />
                 ) : (
