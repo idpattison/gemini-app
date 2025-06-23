@@ -1,0 +1,22 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Define the Todo model
+model Todo {
+  id        String   @id @default(uuid()) // Unique ID for each todo, using UUID
+  name      String                      // The text of the todo
+  completed Boolean  @default(false)    // Whether the todo is completed
+  createdAt DateTime @default(now())   // Timestamp for when it was created
+  updatedAt DateTime @updatedAt        // Timestamp for last update
+}
+
