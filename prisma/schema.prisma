@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,6 +16,7 @@ model Todo {
   id        String   @id @default(uuid()) // Unique ID for each todo, using UUID
   name      String                      // The text of the todo
   completed Boolean  @default(false)    // Whether the todo is completed
+  priority  Int      @default(0) // NEW FIELD: Added a priority field
   createdAt DateTime @default(now())   // Timestamp for when it was created
   updatedAt DateTime @updatedAt        // Timestamp for last update
 }
