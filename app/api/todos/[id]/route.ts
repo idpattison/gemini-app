@@ -8,13 +8,21 @@ type Params = { params: { id: string } };
 export async function PUT(request: Request, { params }: Params) {
   const { id } = params;
   try {
-    const { name, completed } = await request.json();
+    const { name, completed, priority } = await request.json();
+
+    // Validate priority if provided
+    if (priority !== undefined && typeof priority !== 'number') {
+      return NextResponse.json({ error: 'Priority must be a number if provided' }, { status: 400 });
+    }
+
 
     const updatedTodo = await prisma.todo.update({
       where: { id },
       data: {
         ...(name !== undefined && { name }), // Only update name if provided
         ...(completed !== undefined && { completed }), // Only update completed if provided
+        ...(priority !== undefined && { priority }), // Only update priority if provided
+
       },
     });
     return NextResponse.json(updatedTodo, { status: 200 });

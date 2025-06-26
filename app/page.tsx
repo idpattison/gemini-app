@@ -7,6 +7,7 @@ interface Todo {
   id: string;
   name: string;
   completed: boolean;
+  priority: number; // Added priority
   createdAt: string; // From Prisma model
   updatedAt: string; // From Prisma model
   isEditing: boolean; // New property to manage editing state
@@ -17,6 +18,7 @@ export default function Home() {
   const [todos, setTodos] = useState<Todo[]>([]);
   // State to hold the value of the new todo input field
   const [newTodoName, setNewTodoName] = useState<string>('');
+  const [newTodoPriority, setNewTodoPriority] = useState<number>(0); // State for new todo priority
   // State to hold the value of the currently edited todo
   // const [editingValue, setEditingValue] = useState<string>('');
   // add loading and error states
@@ -62,7 +64,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: newTodoName.trim() }),
+        body: JSON.stringify({ name: newTodoName.trim(), priority: newTodoPriority }),
       });
 
       if (!response.ok) {
@@ -72,6 +74,7 @@ export default function Home() {
       // Re-fetch all todos to update the UI
       await fetchTodos();
       setNewTodoName('');
+      setNewTodoPriority(0); // Reset priority input
     } catch (err: any) {
       setError(err.message || 'Failed to add todo');
       console.error('Add todo error:', err);
@@ -140,7 +143,7 @@ export default function Home() {
 
 
 // Function to handle saving the edited todo name
-  const saveEdit = async (id: string, newName: string) => {
+  const saveEdit = async (id: string, newName: string, newPriority: number) => {
     if (newName.trim() === '') {
       // If name is empty, revert or prevent save
       setTodos((prevTodos) =>
@@ -157,7 +160,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), priority: newPriority }),
       });
 
       if (!response.ok) {
@@ -167,12 +170,12 @@ export default function Home() {
       // Optimistic update: Update state immediately
       setTodos((prevTodos) =>
         prevTodos.map((todo) =>
-          todo.id === id ? { ...todo, name: newName.trim(), isEditing: false } : todo
+          todo.id === id ? { ...todo, name: newName.trim(), priority: newPriority, isEditing: false } : todo
         )
       );
       // await fetchTodos(); // Optional: Re-fetch for strict consistency
     } catch (err: any) {
-      setError(err.message || 'Failed to update todo name');
+      setError(err.message || 'Failed to update todo name / priority');
       console.error('Save edit error:', err);
       await fetchTodos(); // Revert state on error
     }
@@ -195,6 +198,15 @@ export default function Home() {
             value={newTodoName}
             onChange={(e) => setNewTodoName(e.target.value)}
           />
+          <input
+            type="number"
+            placeholder="Priority"
+            className="input input-bordered w-24"
+            value={newTodoPriority}
+            onChange={(e) => setNewTodoPriority(parseInt(e.target.value) || 0)}
+            min="0"
+          />
+
           <button type="submit" className="btn btn-primary">
             Add Todo
           </button>
@@ -225,27 +237,49 @@ export default function Home() {
 
                 {/* Todo Name (editable or display) */}
                 {todo.isEditing ? (
-                  <input
-                    type="text"
-                    className="input input-bordered flex-grow"
-                      value={todo.name}
-                    onChange={(e) => {
-                      // Update local state for input immediately
-                      setTodos((prevTodos) =>
-                        prevTodos.map((t) =>
-                          t.id === todo.id ? { ...t, name: e.target.value } : t
-                        )
-                      );
-                    }}
-                    onBlur={(e) => saveEdit(todo.id, e.target.value)} // Save on blur
-                    onKeyDown={(e) => { // Save on Enter key press
-                      if (e.key === 'Enter') {
-                        saveEdit(todo.id, e.currentTarget.value);
-                      }
-                    }}
+                  <div className="flex flex-grow gap-2">
+                    <input
+                      type="text"
+                      className="input input-bordered flex-grow"
+                        value={todo.name}
+                      onChange={(e) => {
+                        // Update local state for input immediately
+                        setTodos((prevTodos) =>
+                          prevTodos.map((t) =>
+                            t.id === todo.id ? { ...t, name: e.target.value } : t
+                          )
+                        );
+                      }}
+                      onBlur={(e) => saveEdit(todo.id, e.target.value, todo.priority)} // Save on blur
+                      onKeyDown={(e) => { // Save on Enter key press
+                        if (e.key === 'Enter') {
+                          saveEdit(todo.id, e.currentTarget.value, todo.priority);
+                        }
+                      }}
 
-                    autoFocus
-                  />
+                      autoFocus
+                    />
+                    <input
+                        type="number"
+                        className="input input-bordered w-24"
+                        value={todo.priority}
+                        onChange={(e) => {
+                          setTodos((prevTodos) =>
+                            prevTodos.map((t) =>
+                              t.id === todo.id ? { ...t, priority: parseInt(e.target.value) || 0 } : t
+                            )
+                          );
+                        }}
+                        onBlur={(e) => saveEdit(todo.id, todo.name, parseInt(e.target.value) || 0)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            saveEdit(todo.id, todo.name, parseInt(e.currentTarget.value) || 0);
+                          }
+                        }}
+                        min="0"
+                      />
+                    </div>
+
                 ) : (
                   <span
                     className={`flex-grow text-lg ${
@@ -253,7 +287,7 @@ export default function Home() {
                     }`}
                     onDoubleClick={() => toggleEdit(todo.id)} // Double click to edit
                   >
-                    {todo.name}
+                    {todo.name} (P: {todo.priority})
                   </span>
                 )}
 

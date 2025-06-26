@@ -19,14 +19,20 @@ export async function GET() {
 // POST /api/todos - Create a new todo
 export async function POST(request: Request) {
   try {
-    const { name } = await request.json();
+    const { name, priority } = await request.json(); // Destructure priority
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Name is required and must be a string' }, { status: 400 });
     }
+    // Validate priority if provided
+    if (priority !== undefined && typeof priority !== 'number') {
+      return NextResponse.json({ error: 'Priority must be a number if provided' }, { status: 400 });
+    }
+
 
     const newTodo = await prisma.todo.create({
       data: {
         name,
+        priority: priority !== undefined ? priority : 0, // Use provided priority or default to 0
       },
     });
     return NextResponse.json(newTodo, { status: 201 }); // 201 Created
