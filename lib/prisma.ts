@@ -3,6 +3,7 @@ import { PrismaClient } from '@/app/generated/prisma';
 // Add prisma to the NodeJS global type
 // This is to prevent multiple instances of Prisma Client in development
 declare global {
+  // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 

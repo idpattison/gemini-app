@@ -4,11 +4,11 @@ import { getServerSession } from 'next-auth'; // Import getServerSession
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Import your authOptions
 
 // Helper to parse the ID from the URL
-type Params = { params: { id: string } };
+// type Params = { params: { id: string } };
 
 // PUT /api/todos/[id] - Update a todo
-export async function PUT(request: Request, { params }: Params) {
-  const { id } = params;
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
@@ -48,8 +48,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 // DELETE /api/todos/[id] - Delete a todo
-export async function DELETE(request: Request, { params }: Params) {
-  const { id } = params;
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {

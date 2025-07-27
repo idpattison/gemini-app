@@ -1,6 +1,6 @@
 'use client'; // This component now needs to be a Client Component
 
-import type { Metadata } from "next";
+// import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";

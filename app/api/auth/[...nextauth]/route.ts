@@ -18,8 +18,10 @@ export const authOptions: NextAuthOptions = {
   ],
 
   // Callbacks to customize session and JWT
+
   callbacks: {
-    async session({ session, token, user }) {
+    async session({ session, user }) {
+    // async session({ session, user }) {
       // Add user ID to the session object
       // This is crucial for linking todos to the authenticated user
       if (session.user) {
