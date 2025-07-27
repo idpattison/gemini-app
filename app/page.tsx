@@ -37,6 +37,12 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true); // Add loading state
   const [error, setError] = useState<string | null>(null); // Add error state
 
+  // States for AI suggestions
+  const [suggestedTodos, setSuggestedTodos] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+
+
   // Determine if the current user is an admin
   const isAdmin = session?.user?.email === ADMIN_EMAIL_CLIENT;
 
@@ -222,6 +228,45 @@ export default function Home() {
     }
   };
 
+    // Function to get suggestions from Gemini
+  const getSuggestions = async () => {
+    setLoadingSuggestions(true);
+    setSuggestionError(null);
+    setSuggestedTodos([]); // Clear previous suggestions
+
+    if (status !== 'authenticated') {
+      setSuggestionError('Please sign in to get AI suggestions.');
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    const currentTodoNames = todos.map(todo => todo.name); // Get only the names of existing todos
+
+    try {
+      const response = await fetch('/api/gemini/suggest-todos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ todos: currentTodoNames }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSuggestedTodos(data.suggestions || []);
+    } catch (err: any) {
+      setSuggestionError(err.message || 'Failed to get AI suggestions.');
+      console.error('Gemini suggestions error:', err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-base-200 text-base-content">
@@ -378,6 +423,45 @@ export default function Home() {
                 ))}
               </ul>
             )}
+
+            {/* AI Suggestions Section */}
+            <div className="divider"></div>
+            <div className="mt-8 w-full max-w-2xl text-center">
+              <h2 className="text-3xl font-bold text-secondary mb-4">AI Suggestions</h2>
+              <button
+                className="btn btn-secondary mb-4"
+                onClick={getSuggestions}
+                disabled={loadingSuggestions || todos.length === 0}
+              >
+                {loadingSuggestions ? 'Getting Suggestions...' : 'Get 3 AI Suggestions'}
+              </button>
+
+              {suggestionError && <p className="text-error mt-2">{suggestionError}</p>}
+
+              {suggestedTodos.length > 0 && (
+                <ul className="space-y-2 mt-4 text-left">
+                  {suggestedTodos.map((suggestion, index) => (
+                    <li key={index} className="flex items-center bg-base-100 p-3 rounded-lg shadow-sm">
+                      <span className="flex-grow">{suggestion}</span>
+                      <button
+                        className="btn btn-sm btn-primary ml-4"
+                        onClick={() => {
+                          setNewTodoName(suggestion); // Populate input with suggestion
+                          setNewTodoPriority(0); // Reset priority for suggestion
+                        }}
+                      >
+                        Add to List
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {suggestedTodos.length === 0 && !loadingSuggestions && !suggestionError && (
+                <p className="text-base-content/70">Click the button above to get AI-powered todo suggestions!</p>
+              )}
+            </div>
+
+
           </>
         )}
       </div>
